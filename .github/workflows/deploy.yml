@@ -1,0 +1,16 @@
+name: progstudy_name         # 이름은 적당히
+
+on:                                    
+  push:                             
+    branches: [ "main" ]     # main 브렌치에 push 명령이 들어온다면 아래 jobs가 실행됨
+
+jobs:
+  progstudy_job:             # job 이름도 적당히
+    runs-on: self-hosted     # 우리가 소유한 서버에 직접 배포하기에 self-hosted
+    steps:                   # steps 아랫 부분이 하나씩 실행되어짐
+      - name : Checkout
+        uses: actions/checkout@v3     # 누군가가 잘 만들어놓은 checkout@v3 액션 사용
+      - name : docker container delete
+        run : docker rm -f $(docker ps -aq) || true
+      - name : docker container create
+        run : docker compose up -d    # docker-compose.yml 실행 명령어

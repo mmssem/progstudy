@@ -1,0 +1,116 @@
+version: '3.9'
+
+networks:
+  mungnet:
+    driver: bridge
+  mungnet_two:
+    driver: bridge
+
+services:
+  front_nginx:
+    container_name: front_nginx_cname
+    image: nginx:1.23.1-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/front/default.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/front/nginx.conf:/etc/nginx/nginx.conf
+      #- ./cert:/etc/nginx/cert            
+      - /etc/letsencrypt:/etc/letsencrypt
+    networks:
+      - mungnet
+      - mungnet_two
+  web:
+    image: nginx
+    container_name: nginx_cname
+    restart: unless-stopped
+    volumes:
+      - ./www/data:/usr/share/nginx/html
+    #ports:
+    #  - "80:80"
+    expose:
+      - "80"
+    networks:
+      - mungnet
+  web2:
+    image: nginx
+    container_name: nginx_cname2
+    restart: unless-stopped
+    volumes:
+      - ./www/data2:/usr/share/nginx/html
+    #ports:
+    #  - "81:80"
+    expose:
+      - "80"
+    networks:
+      - mungnet
+  web3:
+    image: nginx:1.23.2
+    container_name: nginx_cname3
+    restart: unless-stopped
+    volumes:
+      - ./www/data3:/var/www
+      - ./docker/conf/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php_serv
+      - mysql_serv
+    #ports:
+    #  - "8080:80"
+    expose:
+      - "80"
+    networks:
+      - mungnet_two
+  php_serv:
+    container_name: php_cname
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./www/data3:/var/www
+    expose:
+      - "9000"
+    networks:
+      - mungnet_two
+  mysql_serv:
+    image: mysql:latest
+    container_name: mysql_cname
+    restart: unless-stopped
+    expose:
+      - "3306"
+    volumes:
+      - ./docker/mysql/conf:/etc/mysql/conf.d
+      - ./docker/mysql:/docker-entrypoint-initdb.d
+      - ./../mysql_data/mysql:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: testdb
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_PASSWORD: password
+      MYSQL_USER: mungkhs
+      SERVICE_TAGS: mysql_servicetags
+      SERVICE_NAME: mysql_servicename
+      TZ: Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    networks:
+      - mungnet_two
+  mung_phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin_cname
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+    restart: always
+    #ports:
+    #  - "8888:80"
+    expose:
+      - "80"      
+    depends_on:
+      - mysql_serv
+    networks:
+      - mungnet_two
